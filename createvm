@@ -1,0 +1,81 @@
+#!/usr/bin/python
+
+import subprocess
+#pr = subprocess.Popen("ping -c2 %s" % '8.8.8.8', shell=True, stdout=subprocess.PIPE)
+#out = pr.stdout.readlines()
+#print out
+
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument("-n", help="Name of VM", default="-")
+parser.add_argument("-t", help="Type of VM", default="-")
+parser.add_argument("-bf", help="Basefolder of VM", default="/vbox")
+parser.add_argument("-m", help="Amount of memory", default="-")
+parser.add_argument("-nt", help="Network type { nat, bridged }", default="-")
+parser.add_argument("-bi", help="Bridge interface", default="-")
+parser.add_argument("-ds", help="Disk size", default="-")
+parser.add_argument("-iso", help="CD image", default="-")
+parser.add_argument("-vrdeport", help="RDP Port", default="3389")
+parser.add_argument("-step", type=int, help="Step of creating VM", default=1)
+args = parser.parse_args()
+if raw_input("Creating VM with name %s, type %s, memory %s, network type %s, bridge adapter %s, harddisk size %s, iso image %s and RDP port = %s, do you want to proceed? Y/n: " % (args.n, args.t, args.m, args.nt, args.bi, args.ds, args.iso, args.vrdeport)) != "Y" : quit()
+if args.n == "-" : args.n = raw_input("Enter name of VM: ")
+if args.step == 1 :
+	if args.t == "-" : args.t = raw_input("Enter type of VM (WindowsXP|FreeBSD|Ubuntu|Debian|VBoxManage list vmtypes): ")
+	pr = subprocess.Popen(r"VBoxManage createvm --name %s --ostype %s --register --basefolder %s" % (args.n, args.t, args.bf), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 1 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if args.step <= 2 :
+	if args.m == "-" : args.m = raw_input("Enter memory amount: ")
+	if args.nt == "-" : args.nt = raw_input("Enter network type (nat, bridged): ")
+	if (args.nt == "bridged") & (args.bi == "-") : args.bi = raw_input("Enter bridge adapter: ")
+	pr = subprocess.Popen(r"VBoxManage modifyvm %s --memory %s --acpi on --boot1 dvd --nic1 %s --vrde on --vrdeport %s" % (args.n, args.m, args.nt, args.vrdeport), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 2 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if (args.step <= 3) & (args.nt == "bridged") :
+	pr = subprocess.Popen(r"VBoxManage modifyvm %s --bridgeadapter1 %s" % (args.n, args.bi), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 3 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if args.step <= 4 :
+	if args.ds == "-" : args.ds = raw_input("Enter harddisk size: ")
+	if raw_input("Now will be created HDD image with path %s, is path right? Y/n: " % (args.bf+"/"+args.n+"/"+args.n+".vdi"))  != "Y" : quit()
+	pr = subprocess.Popen(r"VBoxManage createhd --filename %s --size %s" % (args.bf+"/"+args.n+"/"+args.n+".vdi", args.ds), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 4 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if args.step <= 5 :
+	pr = subprocess.Popen(r"VBoxManage storagectl %s --name IDE --add ide --controller PIIX4" % (args.n), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 5 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if args.step <= 6 :
+	pr = subprocess.Popen(r"VBoxManage storageattach %s --storagectl IDE --port 0 --device 0 --type hdd --medium %s" % (args.n, args.bf+"/"+args.n+"/"+args.n+".vdi"), shell=True, stdout=subprocess.PIPE)
+	out = pr.stdout.readlines()
+	print out
+	print "Step 6 passed"
+	if raw_input("Enter N to next step: ") != "N" : quit()
+if args.step <=7 : 
+	if args.iso == "-" : args.iso = raw_input("Enter iso image for CD or print 'none': ")
+	if (args.iso != "none")|(args.iso != "-") :
+		pr = subprocess.Popen(r"VBoxManage storageattach %s --storagectl IDE --port 1 --device 0 --type dvddrive --medium %s" % (args.n, args.iso), shell=True, stdout=subprocess.PIPE)
+		out = pr.stdout.readlines()
+		print out
+		print "Step 7 passed"
+		
+print "Creating of VM is complete!"
+
+#VBoxManage createvm --name args.n --type args.t --register --basefolder /vbox 
+#VBoxManage modifyvm args.n --memory args.m --acpi on --boot1 dvd --nic1 args.nt --vrde on
+#VBoxManage modifyvm args.n bridgeadapter1 args.bi
+#VBoxManage createhd --filename args.n.vdi --size args.ds
+#VBoxManage storagectl args.n name IDE --add ide --controller PIIX4
+#VBoxManage storageattach args.n storagectl IDE --port 0 --device 0 type hdd --medium args.n.vdi
+#VBoxManage storageattach args.n storagectl IDE --port 1 --device 0 type dvddrive --medium args.iso
